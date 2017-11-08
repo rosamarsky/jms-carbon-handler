@@ -1,117 +1,41 @@
-# Command Bus 
+# Carbon Handler
 
-> Simple Command Bus for Laravel framework
+> Simple to use Carbon handler for JMS Serializer
 
 ## Installation
-    composer require rosamarsky/laravel-command-bus
+    composer require rosamarsky/jms-carbon-handler
+
+## Setup
+Register the Carbon Handler via the builder object:
     
-Add the Service Provider to the providers array in `config/app.php`
-
 ```php
-Rosamarsky\CommandBus\CommandBusServiceProvider::class,
-```
-
-## Example
-
-```php
-class UserController extends AbstractController
-{
-    public function store(Request $request)
-    {
-        $user = $this->dispatch(new RegisterUser(
-            $request->input('email'),
-            $request->input('password')
-        ));
-    
-        return $user;
-    }
-}
+    $builder->configureHandlers(function (HandlerRegistry $registry) {
+        $registry->registerSubscribingHandler(new CarbonHandler);
+    });
 ```
 
 ## Usage
 
-#### Command
-
+As annotations:
+      
 ```php
-class RegisterUser implements \Rosamarsky\CommandBus\Command
-{
-    private $email;
-    private $password;
-    
-    public function __construct($email, $password)
+    class SomeClass
     {
-        $this->email = $email;
-        $this->password = $password;
+        /**
+         * @Type("Carbon<'Y-m-d'>")
+         */
+        public $date;
     }
-    
-    public function email()
-    {
-        return $this->email;
-    }
-    
-    public function password()
-    {
-        return $this->password;
-    }
-}
+```
+As YAML:
+
+```yaml
+    date:
+      type: Carbon<'d-m-Y'>
 ```
 
-#### Handler
+As XML:
 
-```php
-class RegisterUserHandler implements \Rosamarsky\CommandBus\Handler
-{
-    private $userRepository;
-    
-    public function __construct(UserRepository $userRepository)
-    {
-        $this->userRepository = $userRepository;
-    }
-    
-    public function handle(\Rosamarsky\CommandBus\Command $command)
-    {
-        $user = new User(
-            $command->email(),
-            $command->password()
-        );
-        
-        $this->userRepository->store($user);
-        
-        return $user;
-    }
-}
-```
-
-#### Controllers 
-
-```php
-class AbsctractController extends \Illuminate\Routing\Controller
-{
-    private $dispatcher;
-    
-    public function __construct(\Rosamarsky\CommandBus\CommandBus $dispatcher) 
-    {
-        $this->dispatcher = $dispatcher;
-    }
-    
-    public function dispatch(\Rosamarsky\CommandBus\Command $command)
-    {
-        return $this->dispatcher->execute($command);
-    }
-}
-```
-
-```php
-class UserController extends AbstractController
-{
-    public function store(Request $request)
-    {
-        $user = $this->dispatch(new RegisterUser(
-            $request->input('email'),
-            $request->input('password')
-        ));
-    
-        return $user;
-    }
-}
+```xml
+    <property name="date" xml-attribute="true" type="Carbon"/>
 ```
