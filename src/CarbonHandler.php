@@ -30,7 +30,7 @@ class CarbonHandler implements SubscribingHandlerInterface
      * @param string $defaultFormat
      * @param string $defaultTimezone
      */
-    public function __construct($defaultFormat = \DateTime::ISO8601, $defaultTimezone = 'UTC')
+    public function __construct($defaultFormat = Carbon::ISO8601, $defaultTimezone = 'UTC')
     {
         $this->defaultFormat = $defaultFormat;
         $this->defaultTimezone = new \DateTimeZone($defaultTimezone);
@@ -65,13 +65,13 @@ class CarbonHandler implements SubscribingHandlerInterface
 
     /**
      * @param VisitorInterface $visitor
-     * @param \DateTime $date
+     * @param Carbon $date
      * @param array $type
      * @param Context $context
      *
      * @return string
      */
-    public function serializeCarbon(VisitorInterface $visitor, \DateTime $date, array $type, Context $context)
+    public function serializeCarbon(VisitorInterface $visitor, Carbon $date, array $type, Context $context)
     {
         $date = clone $date;
         $date->setTimezone($this->defaultTimezone);
@@ -94,17 +94,20 @@ class CarbonHandler implements SubscribingHandlerInterface
             return null;
         }
 
-        $timezone = isset($type['params'][1]) ? new \DateTimeZone($type['params'][1]) : $this->defaultTimezone;
-        $format = $this->getFormat($type);
-        $datetime = Carbon::createFromFormat($format, (string)$data, $timezone);
+        $timezone = !empty($type['params'][1]) ? new \DateTimeZone($type['params'][1]) : $this->defaultTimezone;
+        $format = $this->getDeserializationFormat($type);
 
-        if ($datetime === false) {
+        $carbon = Carbon::createFromFormat($format, (string) $data, $timezone);
+
+        if ($carbon === false) {
             throw new RuntimeException(sprintf('Invalid datetime "%s", expected format %s.', $data, $format));
         }
 
-        $datetime->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+        if ($format === 'U') {
+            $carbon = $carbon->setTimezone($timezone);
+        }
 
-        return $datetime;
+        return $carbon;
     }
 
     /**
@@ -115,5 +118,23 @@ class CarbonHandler implements SubscribingHandlerInterface
     private function getFormat(array $type)
     {
         return isset($type['params'][0]) ? $type['params'][0] : $this->defaultFormat;
+    }
+
+    /**
+     * @param array $type
+     *
+     * @return string
+     */
+    private function getDeserializationFormat(array $type)
+    {
+        if (isset($type['params'][2])) {
+            return $type['params'][2];
+        }
+
+        if (isset($type['params'][0])) {
+            return $type['params'][0];
+        }
+
+        return $this->defaultFormat;
     }
 }
